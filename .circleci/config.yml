@@ -188,33 +188,81 @@ workflows:
           requires:
             - lint
             - compile
-          filters:
-            branches:
-              ignore: master
+          # filters:
+          #   branches:
+          #     ignore: master
 
       - build_staging:
           name: build_staging_manual
           requires:
             - hold_build_staging
 
-      - build_staging:
-          name: build_staging
-          requires:
-            - lint
-            - compile
-          filters:
-            branches:
-              only: master
+      # - build_staging:
+      #     name: build_staging
+      #     requires:
+      #       - lint
+      #       - compile
+      #     filters:
+      #       branches:
+      #         only: master
 
       - deploy_staging:
           name: deploy_staging_manual
           requires:
             - build_staging_manual
 
-      - deploy_staging:
-          name: deploy_staging
+      # - deploy_staging:
+      #     name: deploy_staging
+      #     requires:
+      #       - build_staging
+
+  release:
+    jobs:
+      - setup:
+          filters:
+            tags:
+              only: /release.*/
+            branches:
+              ignore: /.*/ # all
+
+      - lint:
           requires:
-            - build_staging
+            - setup
+          filters:
+            tags:
+              only: /release.*/
+
+      - compile:
+          requires:
+            - setup
+          filters:
+            tags:
+              only: /release.*/
+
+      - hold_build_staging:
+          type: approval
+          requires:
+            - lint
+            - compile
+          filters:
+            tags:
+              only: /release.*/
+
+      - build_staging:
+          name: build_staging_manual
+          requires:
+            - hold_build_staging
+          filters:
+            tags:
+              only: /release.*/
+
+      - deploy_staging:
+          name: deploy_staging_manual
+          requires:
+            - build_staging_manual
+          filters:
+            tags:
+              only: /release.*/
 
       - hold_build_app1:
           type: approval
@@ -224,8 +272,6 @@ workflows:
           filters:
             tags:
               only: /release.*/
-            branches:
-              ignore: /.*/ # all
 
       - hold_build_app2:
           type: approval
@@ -235,8 +281,6 @@ workflows:
           filters:
             tags:
               only: /release.*/
-            branches:
-              ignore: /.*/ # all
 
       - hold_build_app3:
           type: approval
@@ -246,26 +290,33 @@ workflows:
           filters:
             tags:
               only: /release.*/
-            branches:
-              ignore: /.*/ # all
 
       - build_release:
           name: build_app1
           app: app1
           requires:
             - hold_build_app1
+          filters:
+            tags:
+              only: /release.*/
 
       - build_release:
           name: build_app2
           app: app2
           requires:
             - hold_build_app2
+          filters:
+            tags:
+              only: /release.*/
 
       - build_release:
           name: build_app3
           app: app3
           requires:
             - hold_build_app3
+          filters:
+            tags:
+              only: /release.*/
 
       - deploy_release:
           name: deploy_app1
@@ -273,6 +324,9 @@ workflows:
           prefix: es
           requires:
             - build_app1
+          filters:
+            tags:
+              only: /release.*/
 
       - deploy_release:
           name: deploy_app2
@@ -280,33 +334,15 @@ workflows:
           prefix: es
           requires:
             - build_app2
+          filters:
+            tags:
+              only: /release.*/
 
       - deploy_release:
           name: deploy_app3
           app: app3
           requires:
             - build_app3
-  # qa:
-  #   triggers:
-  #     - schedule:
-  #         cron: "0 23 * * *"
-  #         filters:
-  #           branches:
-  #             only: qa
-  #   jobs:
-  #     - setup
-  #     - lint:
-  #         requires:
-  #           - setup
-  #     - compile:
-  #         requires:
-  #           - setup
-  #     - build_staging:
-  #         name: build_staging
-  #         requires:
-  #           - lint
-  #           - compile
-  #     - deploy_staging:
-  #         name: deploy_staging
-  #         requires:
-  #           - build_staging
+          filters:
+            tags:
+              only: /release.*/
