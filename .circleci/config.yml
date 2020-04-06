@@ -110,24 +110,15 @@ jobs:
 workflows:
   normal:
     jobs:
-      - setup:
-          filters:
-            tags:
-              only: /release.*/
+      - setup
 
       - lint:
           requires:
             - setup
-          filters:
-            tags:
-              only: /release.*/
 
       - compile:
           requires:
             - setup
-          filters:
-            tags:
-              only: /release.*/
 
       - hold_build_dev1:
           type: approval
