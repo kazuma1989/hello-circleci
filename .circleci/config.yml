@@ -120,23 +120,29 @@ workflows:
           requires:
             - setup
 
+  release_dev:
+    jobs:
+      - hold_start_release:
+          type: approval
+
+      - setup:
+          requires:
+            - hold_start_release
+
       - hold_build_dev1:
           type: approval
           requires:
-            - lint
-            - compile
+            - setup
 
       - hold_build_dev2:
           type: approval
           requires:
-            - lint
-            - compile
+            - setup
 
       - hold_build_dev3:
           type: approval
           requires:
-            - lint
-            - compile
+            - setup
 
       - build_develop:
           name: build_dev1
@@ -188,24 +194,10 @@ workflows:
           requires:
             - hold_build_staging
 
-      # - build_staging:
-      #     name: build_staging
-      #     requires:
-      #       - lint
-      #       - compile
-      #     filters:
-      #       branches:
-      #         only: master
-
       - deploy_staging:
           name: deploy_staging_manual
           requires:
             - build_staging_manual
-
-      # - deploy_staging:
-      #     name: deploy_staging
-      #     requires:
-      #       - build_staging
 
   release:
     jobs:
