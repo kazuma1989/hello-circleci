@@ -1,0 +1,303 @@
+version: 2.1
+
+executors:
+  default:
+    working_directory: ~/workspace
+    docker:
+      - image: cimg/base:2020.01
+
+jobs:
+  setup:
+    executor:
+      name: default
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: echo Install!
+
+  lint:
+    executor:
+      name: default
+    steps:
+      - checkout
+      - run:
+          name: Run lint
+          command: echo Lint!
+
+  compile:
+    executor:
+      name: default
+    steps:
+      - checkout
+      - run:
+          name: Compile source files
+          command: echo Compile!
+
+  build_develop:
+    parameters:
+      k8s:
+        type: enum
+        enum: ["dev1", "dev2", "dev3"]
+    executor:
+      name: default
+    steps:
+      - checkout
+      - run:
+          name: Build << parameters.k8s >>
+          command: echo Build!
+
+  deploy_develop:
+    parameters:
+      k8s:
+        type: enum
+        enum: ["dev1", "dev2", "dev3"]
+    executor:
+      name: default
+    steps:
+      - run:
+          name: Deploy << parameters.k8s >>
+          command: echo Deploy!
+
+  build_staging:
+    executor:
+      name: default
+    steps:
+      - checkout
+      - run:
+          name: Build staging
+          command: echo Build!
+
+  deploy_staging:
+    executor:
+      name: default
+    steps:
+      - run:
+          name: Deploy staging
+          command: echo Deploy!
+
+  build_release:
+    parameters:
+      app:
+        type: enum
+        enum: ["app1", "app2", "app3"]
+    executor:
+      name: default
+    steps:
+      - checkout
+      - run:
+          name: Build release (<< parameters.app >>) artifacts
+          command: echo Build!
+
+  deploy_release:
+    parameters:
+      app:
+        type: enum
+        enum: ["app1", "app2", "app3"]
+      prefix:
+        type: string
+        default: ""
+    executor:
+      name: default
+    steps:
+      - run:
+          name: Deploy release
+          command: echo Deploy!
+
+# 基本構造
+# setup ── lint   ─┬─ (hold_build) ─ build ─ deploy
+#    └──── compile ┘
+workflows:
+  normal:
+    jobs:
+      - setup
+
+      - lint:
+          requires:
+            - setup
+
+      - compile:
+          requires:
+            - setup
+
+      - hold_build_dev1:
+          type: approval
+          requires:
+            - lint
+            - compile
+
+      - hold_build_dev2:
+          type: approval
+          requires:
+            - lint
+            - compile
+
+      - hold_build_dev3:
+          type: approval
+          requires:
+            - lint
+            - compile
+
+      - build_develop:
+          name: build_dev1
+          k8s: dev1
+          requires:
+            - hold_build_dev1
+
+      - build_develop:
+          name: build_dev2
+          k8s: dev2
+          requires:
+            - hold_build_dev2
+
+      - build_develop:
+          name: build_dev3
+          k8s: dev3
+          requires:
+            - hold_build_dev3
+
+      - deploy_develop:
+          name: deploy_dev1
+          k8s: dev1
+          requires:
+            - build_dev1
+
+      - deploy_develop:
+          name: deploy_dev2
+          k8s: dev2
+          requires:
+            - build_dev2
+
+      - deploy_develop:
+          name: deploy_dev3
+          k8s: dev3
+          requires:
+            - build_dev3
+
+      - hold_build_staging:
+          type: approval
+          requires:
+            - lint
+            - compile
+          filters:
+            branches:
+              ignore: master
+
+      - build_staging:
+          name: build_staging_manual
+          requires:
+            - hold_build_staging
+
+      - build_staging:
+          name: build_staging
+          requires:
+            - lint
+            - compile
+          filters:
+            branches:
+              only: master
+
+      - deploy_staging:
+          name: deploy_staging_manual
+          requires:
+            - build_staging_manual
+
+      - deploy_staging:
+          name: deploy_staging
+          requires:
+            - build_staging
+
+      - hold_build_app1:
+          type: approval
+          requires:
+            - lint
+            - compile
+          filters:
+            branches:
+              only: master
+
+      - hold_build_app2:
+          type: approval
+          requires:
+            - lint
+            - compile
+          filters:
+            branches:
+              only: master
+
+      - hold_build_app3:
+          type: approval
+          requires:
+            - lint
+            - compile
+          filters:
+            branches:
+              only: master
+
+      - build_release:
+          name: build_app1
+          app: app1
+          requires:
+            - hold_build_app1
+
+      - build_release:
+          name: build_app2
+          app: app2
+          requires:
+            - hold_build_app2
+
+      - build_release:
+          name: build_app3
+          app: app3
+          requires:
+            - hold_build_app3
+
+      - deploy_release:
+          name: deploy_app1
+          app: app1
+          prefix: es
+          requires:
+            - build_app1
+
+      - deploy_release:
+          name: deploy_app2
+          app: app2
+          prefix: es
+          requires:
+            - build_app2
+
+      - deploy_release:
+          name: deploy_app3
+          app: app3
+          requires:
+            - build_app3
+
+  # qa:
+  #   triggers:
+  #     - schedule:
+  #         cron: "0 23 * * *"
+  #         filters:
+  #           branches:
+  #             only: qa
+
+  #   jobs:
+  #     - setup
+
+  #     - lint:
+  #         requires:
+  #           - setup
+
+  #     - compile:
+  #         requires:
+  #           - setup
+
+  #     - build_staging:
+  #         name: build_staging
+  #         requires:
+  #           - lint
+  #           - compile
+
+  #     - deploy_staging:
+  #         name: deploy_staging
+  #         requires:
+  #           - build_staging
