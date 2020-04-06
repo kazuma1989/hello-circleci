@@ -183,11 +183,7 @@ workflows:
       - hold_build_staging:
           type: approval
           requires:
-            - lint
-            - compile
-          # filters:
-          #   branches:
-          #     ignore: master
+            - setup
 
       - build_staging:
           name: build_staging_manual
